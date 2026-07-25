@@ -183,6 +183,8 @@ class _AircraftDialogState extends State<_AircraftDialog> {
       TextEditingController(text: widget.existing?.model ?? '');
   late final TextEditingController _capacity = TextEditingController(
       text: widget.existing?.capacity?.toString() ?? '');
+  late final TextEditingController _operator =
+      TextEditingController(text: widget.existing?.operatorName ?? '');
   String? _registrationError;
   bool _saving = false;
 
@@ -191,6 +193,7 @@ class _AircraftDialogState extends State<_AircraftDialog> {
     _registration.dispose();
     _model.dispose();
     _capacity.dispose();
+    _operator.dispose();
     super.dispose();
   }
 
@@ -217,6 +220,7 @@ class _AircraftDialogState extends State<_AircraftDialog> {
         id: widget.existing?.id,
         registration: _registration.text.trim().toUpperCase(),
         model: _model.text.trim(),
+        operatorName: _operator.text.trim().isEmpty ? null : _operator.text.trim(),
         capacity: int.tryParse(_capacity.text.trim()),
       );
       if (widget.existing == null) {
@@ -266,6 +270,12 @@ class _AircraftDialogState extends State<_AircraftDialog> {
                     (value == null || value.trim().isEmpty)
                         ? s.requiredField
                         : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _operator,
+                style: const TextStyle(fontSize: 18),
+                decoration: InputDecoration(labelText: s.operatorField),
               ),
               const SizedBox(height: 16),
               TextFormField(

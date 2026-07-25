@@ -2,14 +2,20 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/app_paths.dart';
+import 'core/config/supabase_config.dart';
 import 'core/logging/app_logger.dart';
 import 'presentation/state/app_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    publishableKey: SupabaseConfig.publishableKey,
+  );
 
   // En escritorio (Windows/Linux) SQLite se usa a través de FFI;
   // en Android se usa el plugin nativo de sqflite.

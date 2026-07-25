@@ -52,6 +52,16 @@ flutter run -d windows    # Windows (requiere Modo de Desarrollador activo)
 flutter run               # Android
 ```
 
+## Supabase
+
+SkyTax utiliza Supabase únicamente para el catálogo de aeronaves: matrícula,
+tipo/modelo y operador. El usuario administrador y el resto de la información
+continúan almacenándose localmente. Antes de ejecutar la app, aplica la
+migración `supabase/migrations/20260725120000_aircraft_catalog.sql` en **SQL
+Editor** del proyecto Supabase y activa **Anonymous Sign-Ins** en
+**Authentication > Providers**. No uses ni incluyas una clave `sb_secret_` en
+la aplicación.
+
 Pruebas y análisis:
 
 ```bash

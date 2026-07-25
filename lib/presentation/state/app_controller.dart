@@ -7,7 +7,7 @@ import '../../core/utils/formatters.dart';
 import '../../data/database/skytax_database.dart';
 import '../../data/local_config.dart';
 import '../../data/models/models.dart';
-import '../../data/repositories/aircraft_repository.dart';
+import '../../data/repositories/supabase_aircraft_repository.dart';
 import '../../data/repositories/audit_repository.dart';
 import '../../data/repositories/invoice_repository.dart';
 import '../../data/repositories/settings_repository.dart';
@@ -15,6 +15,7 @@ import '../../data/repositories/user_repository.dart';
 import '../../domain/invoicing.dart';
 import '../../domain/payment_simulator.dart';
 import '../../domain/tax_calculator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Estado global de la aplicación.
 ///
@@ -24,7 +25,7 @@ class AppController extends ChangeNotifier {
   AppController({required this.paths}) {
     _dbase = SkyTaxDatabase(dataDirectory: paths.data);
     _configStore = LocalConfigStore(baseDirectory: paths.base);
-    aircraft = AircraftRepository(_dbase);
+    aircraft = SupabaseAircraftRepository(Supabase.instance.client, () => config.airportCode);
     users = UserRepository(_dbase);
     invoices = InvoiceRepository(_dbase);
     settings = SettingsRepository(_dbase);
@@ -37,7 +38,7 @@ class AppController extends ChangeNotifier {
   late final SkyTaxDatabase _dbase;
   late final LocalConfigStore _configStore;
 
-  late final AircraftRepository aircraft;
+  late final SupabaseAircraftRepository aircraft;
   late final UserRepository users;
   late final InvoiceRepository invoices;
   late final SettingsRepository settings;
@@ -62,6 +63,9 @@ class AppController extends ChangeNotifier {
   Future<void> bootstrap() async {
     config = await _configStore.load();
     await _dbase.open(config.airportCode);
+    if (Supabase.instance.client.auth.currentSession == null) {
+      await Supabase.instance.client.auth.signInAnonymously();
+    }
     await _reloadSettings();
     AppLogger.instance
         .info('SkyTax iniciado en ${config.airportDisplay}');
