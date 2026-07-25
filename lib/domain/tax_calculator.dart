@@ -61,13 +61,15 @@ class TaxCalculator {
       throw ArgumentError.value(
           passengers, 'passengers', 'Debe ser mayor que cero');
     }
+    // La tabla de Supabase contiene únicamente aeronaves con hangar en este
+    // aeropuerto. Una matrícula ausente se considera foránea y paga DOSA.
     final bool isLocal = aircraft != null;
     final double subtotal = taxRate * passengers;
     final double dosa = isLocal ? 0 : dosaFee;
     return TaxQuote(
       registration: registration.trim().toUpperCase(),
       aircraftModel:
-          isLocal ? aircraft.model : typedModel.trim(),
+          isLocal ? aircraft!.model : typedModel.trim(),
       operatorName: aircraft?.operatorName,
       passengers: passengers,
       taxRate: taxRate,

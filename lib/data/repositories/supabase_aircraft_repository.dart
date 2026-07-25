@@ -12,50 +12,64 @@ class SupabaseAircraftRepository {
   Future<List<Aircraft>> getAll() async {
     final rows = await _client
         .from('aircraft')
-        .select('id, registration, model, operator_id, capacity, operators(name)')
+        .select('id, model, operator_id, capacity, operators(name)')
         .eq('airport_code', _airportCode())
-        .order('registration');
+        .order('id');
     return (rows as List).cast<Map<String, dynamic>>().map(_fromRow).toList();
   }
 
   Future<Aircraft?> findByRegistration(String registration) async {
     final row = await _client
         .from('aircraft')
-        .select('id, registration, model, operator_id, capacity, operators(name)')
+        .select('id, model, operator_id, capacity, operators(name)')
         .eq('airport_code', _airportCode())
-        .eq('registration', registration.trim().toUpperCase())
+        .eq('id', registration.trim().toUpperCase())
         .maybeSingle();
     return row == null ? null : _fromRow(row);
   }
 
-  Future<bool> registrationExists(String registration, {int? excludeId}) async {
+  Future<bool> registrationExists(
+    String registration, {
+    String? excludeRegistration,
+  }) async {
     var query = _client
         .from('aircraft')
         .select('id')
         .eq('airport_code', _airportCode())
-        .eq('registration', registration.trim().toUpperCase());
-    if (excludeId != null) query = query.neq('id', excludeId);
+        .eq('id', registration.trim().toUpperCase());
+    if (excludeRegistration != null) {
+      query = query.neq(
+        'id',
+        excludeRegistration.trim().toUpperCase(),
+      );
+    }
     return (await query as List).isNotEmpty;
   }
 
-  Future<int> insert(Aircraft aircraft) async {
-    final row = await _client
+  Future<void> insert(Aircraft aircraft) async {
+    await _client.from('aircraft').insert(await _toRow(aircraft));
+  }
+
+  Future<void> update(
+    Aircraft aircraft, {
+    required String originalRegistration,
+  }) async {
+    await _client
         .from('aircraft')
-        .insert(await _toRow(aircraft))
-        .select('id')
-        .single();
-    return (row['id'] as num).toInt();
+        .update(await _toRow(aircraft))
+        .eq('airport_code', _airportCode())
+        .eq('id', originalRegistration.trim().toUpperCase());
   }
 
-  Future<void> update(Aircraft aircraft) async {
-    await _client.from('aircraft').update(await _toRow(aircraft)).eq('id', aircraft.id!);
-  }
-
-  Future<void> delete(int id) => _client.from('aircraft').delete().eq('id', id);
+  Future<void> delete(String registration) => _client
+      .from('aircraft')
+      .delete()
+      .eq('airport_code', _airportCode())
+      .eq('id', registration.trim().toUpperCase());
 
   Future<Map<String, Object?>> _toRow(Aircraft aircraft) async => {
         'airport_code': _airportCode(),
-        'registration': aircraft.registration.trim().toUpperCase(),
+        'id': aircraft.registration.trim().toUpperCase(),
         'model': aircraft.model.trim(),
         'operator_id': await _operatorId(aircraft.operatorName),
         'capacity': aircraft.capacity,
@@ -82,8 +96,7 @@ class SupabaseAircraftRepository {
   Aircraft _fromRow(Map<String, dynamic> row) {
     final dynamic operatorRow = row['operators'];
     return Aircraft(
-      id: (row['id'] as num).toInt(),
-      registration: row['registration'] as String,
+      registration: row['id'] as String,
       model: row['model'] as String,
       operatorId: (row['operator_id'] as num?)?.toInt(),
       operatorName: operatorRow is Map<String, dynamic>

@@ -16,13 +16,12 @@ create table public.operators (
 );
 
 create table public.aircraft (
-  id bigint generated always as identity primary key,
   airport_code text not null references public.airports(code) on delete cascade,
-  registration text not null,
+  id text not null,
   model text not null,
   operator_id bigint references public.operators(id) on delete set null,
   capacity integer check (capacity is null or capacity >= 0),
-  unique (airport_code, registration)
+  primary key (airport_code, id)
 );
 
 -- La aplicación inicia una sesión anónima de Supabase para proteger las
@@ -48,7 +47,7 @@ insert into public.operators (airport_code, name, rif) values
   ('SVMI', 'Avior Airlines', 'J-30093868-6'),
   ('SVMI', 'Laser Airlines', 'J-30276836-5'),
   ('SVMI', 'Estelar Latinoamerica', 'J-30902333-4');
-insert into public.aircraft (airport_code, registration, model, operator_id, capacity)
+insert into public.aircraft (airport_code, id, model, operator_id, capacity)
 select 'SVMI', fleet.registration, fleet.model, operators.id, fleet.capacity
 from (values
   ('YV1234', 'AC90', 'Conviasa', 7),
