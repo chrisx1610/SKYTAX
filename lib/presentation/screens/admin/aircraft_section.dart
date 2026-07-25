@@ -43,24 +43,11 @@ class _AircraftSectionState extends State<AircraftSection> {
   }
 
   Future<void> _edit([Aircraft? existing]) async {
-    final _AircraftSaveResult? result = await showDialog<_AircraftSaveResult>(
+    final bool? saved = await showDialog<bool>(
       context: context,
       builder: (_) => _AircraftDialog(existing: existing),
     );
-    if (result == _AircraftSaveResult.hangarSaved ||
-        result == _AircraftSaveResult.hangarRemoved) {
-      await _load();
-    }
-    if (result == _AircraftSaveResult.noHangar && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Aeronave sin hangar: no se guardó en Supabase. '
-            'En el cobro se aplicará la tarifa completa y DOSA.',
-          ),
-        ),
-      );
-    }
+    if (saved == true) await _load();
   }
 
   Future<void> _showDetails(Aircraft aircraft) async {
@@ -265,7 +252,6 @@ class _AircraftDialogState extends State<_AircraftDialog> {
       TextEditingController(text: widget.existing?.operatorName ?? '');
   String? _registrationError;
   bool _saving = false;
-  bool _hasHangar = true;
 
   @override
   void dispose() {
@@ -284,36 +270,6 @@ class _AircraftDialogState extends State<_AircraftDialog> {
 
     setState(() => _saving = true);
     try {
-      final Aircraft aircraft = Aircraft(
-        registration: _registration.text.trim().toUpperCase(),
-        model: _model.text.trim(),
-        operatorName:
-            _operator.text.trim().isEmpty ? null : _operator.text.trim(),
-        capacity: int.tryParse(_capacity.text.trim()),
-      );
-
-      if (!_hasHangar) {
-        // Solo se guardan en Supabase aeronaves con hangar en este aeropuerto.
-        // Si se cambia una existente a "sin hangar", se retira del catálogo.
-        if (widget.existing != null) {
-          await controller.aircraft.delete(widget.existing!.registration);
-          await controller.audit(
-            'AERONAVE_SIN_HANGAR',
-            'Matrícula ${aircraft.registration}: retirada de Supabase',
-          );
-          if (mounted) {
-            Navigator.of(context).pop(_AircraftSaveResult.hangarRemoved);
-          }
-          return;
-        }
-        await controller.audit(
-          'AERONAVE_SIN_HANGAR',
-          'Matrícula ${aircraft.registration}: no se guarda en Supabase',
-        );
-        if (mounted) Navigator.of(context).pop(_AircraftSaveResult.noHangar);
-        return;
-      }
-
       final bool duplicated = await controller.aircraft.registrationExists(
         _registration.text,
         excludeRegistration: widget.existing?.registration,
@@ -325,6 +281,13 @@ class _AircraftDialogState extends State<_AircraftDialog> {
         });
         return;
       }
+      final Aircraft aircraft = Aircraft(
+        registration: _registration.text.trim().toUpperCase(),
+        model: _model.text.trim(),
+        operatorName:
+            _operator.text.trim().isEmpty ? null : _operator.text.trim(),
+        capacity: int.tryParse(_capacity.text.trim()),
+      );
       if (widget.existing == null) {
         await controller.aircraft.insert(aircraft);
         await controller.audit(
@@ -337,7 +300,7 @@ class _AircraftDialogState extends State<_AircraftDialog> {
         await controller.audit(
             'AERONAVE_EDITADA', 'Matrícula ${aircraft.registration}');
       }
-      if (mounted) Navigator.of(context).pop(_AircraftSaveResult.hangarSaved);
+      if (mounted) Navigator.of(context).pop(true);
     } catch (e, st) {
       AppLogger.instance.error('No se pudo guardar la aeronave', e, st);
       if (mounted) {
@@ -403,20 +366,6 @@ class _AircraftDialogState extends State<_AircraftDialog> {
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: InputDecoration(labelText: s.capacityField),
               ),
-              const SizedBox(height: 12),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('¿Tiene hangar en SVMI?'),
-                subtitle: Text(
-                  _hasHangar
-                      ? 'Sí: se guardará en Supabase y tendrá tarifa reducida.'
-                      : 'No: no se guardará en Supabase y pagará tarifa completa más DOSA.',
-                ),
-                value: _hasHangar,
-                onChanged: _saving
-                    ? null
-                    : (value) => setState(() => _hasHangar = value),
-              ),
             ],
           ),
         ),
@@ -434,5 +383,3 @@ class _AircraftDialogState extends State<_AircraftDialog> {
     );
   }
 }
-
-enum _AircraftSaveResult { hangarSaved, hangarRemoved, noHangar }
